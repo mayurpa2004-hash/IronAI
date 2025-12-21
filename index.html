@@ -2,10 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IronAI - Payments</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#09090b">
+    <meta name="description" content="IronAI - Smart Workout Tracker">
+    <title>IronAI Tracker</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/254/254638.png">
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <link rel="stylesheet" href="styles.css">
@@ -13,12 +20,24 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker Registered'))
+                    .catch(err => console.log('SW Error:', err));
+            });
+        }
+    </script>
 </head>
 <body>
 
+    <div id="network-status">You are Offline - Saving Locally 💾</div>
+
     <div id="loading-screen">
         <div class="spinner"></div>
-        <p>Connecting to Server...</p>
+        <p>Syncing Data...</p>
     </div>
 
     <div id="auth-screen" style="display:none;">
@@ -32,19 +51,38 @@
             </div>
             <div class="input-group">
                 <i class="fas fa-lock"></i>
-                <input id="password" type="password" placeholder="Password">
+                <input id="password" type="password" placeholder="Password (Min 6 chars)">
             </div>
             <button class="btn-primary" onclick="handleAuth()">Login / Register</button>
             <p id="auth-error" class="error-text"></p>
         </div>
     </div>
 
+    <div id="chat-widget-container">
+        <div id="chat-window" class="hidden">
+            <div class="chat-header">
+                <span>🤖 IronAI Coach</span>
+                <button onclick="toggleChat()" class="close-chat"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="chat-messages">
+                <div class="msg bot">Hello! Ask me about workouts, diet, supplements, or specific muscles! 💪</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Type 'chest', 'diet', 'creatine'..." onkeypress="handleChatEnter(event)">
+                <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+        <button id="chat-toggle" onclick="toggleChat()">
+            <i class="fas fa-comment-dots"></i>
+        </button>
+    </div>
+
     <div id="rest-timer">
         <div class="timer-circle"><span id="timer-val">00:00</span></div>
         <div class="timer-controls">
-            <button onclick="adjustTime(-10)">-10</button>
+            <button onclick="adjustTime(-10)">-10s</button>
             <button class="stop-btn" onclick="stopTimer()"><i class="fas fa-times"></i></button>
-            <button onclick="adjustTime(+10)">+10</button>
+            <button onclick="adjustTime(+10)">+10s</button>
         </div>
     </div>
 
@@ -57,8 +95,9 @@
                 <h1>Workout</h1>
                 <button class="icon-btn" onclick="resetRoutine()"><i class="fas fa-undo"></i></button>
             </div>
+            
             <div class="selector-wrapper">
-                <select id="day-selector" onchange="loadWorkout(this.value)">
+                <select id="day-selector" onchange="changeDay(this.value)">
                     <option value="Monday">Mon: Chest & Triceps</option>
                     <option value="Tuesday">Tue: Back & Biceps</option>
                     <option value="Wednesday">Wed: Legs & Shoulders</option>
@@ -68,28 +107,46 @@
                     <option value="Sunday">Sun: Rest</option>
                 </select>
             </div>
+
             <div id="workout-list" class="scroll-area"></div>
-            <button class="btn-primary" onclick="finishWorkoutSession()">Finish Workout (+100 XP)</button>
+            
+            <button class="btn-primary" style="margin-top: 20px;" onclick="finishWorkoutSession()">
+                Finish Workout (+100 XP)
+            </button>
         </div>
 
         <div id="view-analytics" class="container">
             <div class="header"><h1>Analytics</h1></div>
-            <div class="stats-row">
-                <div class="stat-card"><span class="lbl">Workouts</span><span class="val highlight" id="stat-workouts">0</span></div>
-                <div class="stat-card"><span class="lbl">Streak</span><span class="val" id="stat-streak">0 🔥</span></div>
+            
+            <div class="tab-switcher">
+                <button class="tab-btn active" onclick="switchSubTab('sub-stats', this)">Stats</button>
+                <button class="tab-btn" onclick="switchSubTab('sub-history', this); loadHistoryUI()">History</button>
             </div>
-            <div class="card">
-                <h3>Consistency</h3>
-                <div class="chart-container"><canvas id="consistencyChart"></canvas></div>
-            </div>
-            <div class="card" style="border-left: 3px solid #ffd700;">
-                <h3><i class="fas fa-dumbbell"></i> 1 Rep Max</h3>
-                <div class="form-grid">
-                    <div class="inp"><label>Weight (kg)</label><input type="number" id="rm-weight" placeholder="100"></div>
-                    <div class="inp"><label>Reps</label><input type="number" id="rm-reps" placeholder="5"></div>
+
+            <div id="sub-stats" class="sub-view active">
+                <div class="stats-row">
+                    <div class="stat-card"><span class="lbl">Workouts</span><span class="val highlight" id="stat-workouts">0</span></div>
+                    <div class="stat-card"><span class="lbl">Streak</span><span class="val" id="stat-streak">0 🔥</span></div>
                 </div>
-                <button class="btn-dark mt-15" onclick="calculate1RM()">Calculate</button>
-                <div id="rm-result" class="result-box hidden"></div>
+                <div class="card">
+                    <h3>Consistency</h3>
+                    <div class="chart-container"><canvas id="consistencyChart"></canvas></div>
+                </div>
+                <div class="card" style="border-left: 3px solid #ffd700;">
+                    <h3><i class="fas fa-dumbbell"></i> 1 Rep Max</h3>
+                    <div class="form-grid">
+                        <div class="inp"><label>Weight (kg)</label><input type="number" id="rm-weight" placeholder="100"></div>
+                        <div class="inp"><label>Reps</label><input type="number" id="rm-reps" placeholder="5"></div>
+                    </div>
+                    <button class="btn-dark mt-15" onclick="calculate1RM()">Calculate</button>
+                    <div id="rm-result" class="result-box hidden"></div>
+                </div>
+            </div>
+
+            <div id="sub-history" class="sub-view">
+                <div id="history-list">
+                    <p style="text-align:center; color:#666; margin-top:20px;">No workouts recorded yet.</p>
+                </div>
             </div>
         </div>
 
@@ -111,7 +168,6 @@
                                 <option value="cut">Fat Loss</option>
                                 <option value="bulk">Muscle Gain</option>
                                 <option value="strength">Strength</option>
-                                <option value="endurance">Endurance</option>
                                 <option value="maintain">Maintenance</option>
                             </select>
                         </div>
@@ -171,60 +227,7 @@
                 </div>
             </div>
 
-            <div class="card" style="border-left: 3px solid #ffd700; cursor: pointer;" onclick="openPlans()">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div><h3 style="color:#ffd700"><i class="fas fa-crown"></i> Upgrade to Pro</h3><p style="font-size:0.8rem; color:#aaa;">Get Advanced AI & Analytics</p></div>
-                    <i class="fas fa-chevron-right"></i>
-                </div>
-            </div>
-
             <button class="btn-danger" onclick="logout()">Log Out</button>
-        </div>
-
-        <div id="payment-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header"><h2>Select Plan</h2><button onclick="closeModal('payment-modal')"><i class="fas fa-times"></i></button></div>
-                
-                <div id="plan-selection">
-                    <div class="plan-card" onclick="selectPlan('Pro', 199)">
-                        <div class="plan-tag">Monthly</div>
-                        <h3>Pro</h3><div class="price">₹199<small>/mo</small></div>
-                        <ul><li>AI Diet Plans</li><li>Advanced Stats</li></ul>
-                    </div>
-                    <div class="plan-card elite" onclick="selectPlan('Elite', 1999)">
-                        <div class="plan-tag best">Best Value</div>
-                        <h3>Elite</h3><div class="price">₹1999<small>/yr</small></div>
-                        <ul><li>All Pro Features</li><li>Priority Support</li></ul>
-                    </div>
-                </div>
-
-                <div id="payment-gateway" class="hidden">
-                    <button class="back-btn" onclick="backToPlans()"><i class="fas fa-arrow-left"></i> Back</button>
-                    <h3 id="pay-amount" style="margin:15px 0; text-align:center;">Pay ₹199</h3>
-                    
-                    <div class="pay-tabs">
-                        <button class="pay-tab active" onclick="switchPayMethod('upi')">UPI</button>
-                        <button class="pay-tab" onclick="switchPayMethod('card')">Card</button>
-                        <button class="pay-tab" onclick="switchPayMethod('paypal')">PayPal</button>
-                    </div>
-
-                    <div id="pay-upi" class="pay-view active">
-                        <div class="qr-box"><i class="fas fa-qrcode" style="font-size:3rem;"></i><p>Scan to Pay</p></div>
-                        <input type="text" placeholder="Enter UPI ID (e.g. user@okhdfc)">
-                    </div>
-                    
-                    <div id="pay-card" class="pay-view">
-                        <input type="text" placeholder="Card Number" style="margin-bottom:10px;">
-                        <div style="display:flex; gap:10px;"><input type="text" placeholder="MM/YY"><input type="text" placeholder="CVV"></div>
-                    </div>
-
-                    <div id="pay-paypal" class="pay-view" style="text-align:center;">
-                        <button class="btn-dark" style="background:#0070ba;">Pay with PayPal</button>
-                    </div>
-
-                    <button class="btn-primary mt-15" onclick="processPayment()">Complete Payment</button>
-                </div>
-            </div>
         </div>
 
         <div class="nav-bar">
