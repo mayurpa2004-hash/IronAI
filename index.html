@@ -33,6 +33,8 @@
 </head>
 <body>
 
+    <canvas id="confetti-canvas"></canvas>
+
     <div id="network-status">You are Offline - Saving Locally 💾</div>
 
     <div id="loading-screen">
@@ -58,6 +60,66 @@
         </div>
     </div>
 
+    <div id="payment-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Upgrade Plan</h3>
+                <button onclick="closeModal('payment-modal')"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div id="plan-selection">
+                <div class="plan-card" onclick="selectPlan('Pro', 199)">
+                    <div class="plan-header">
+                        <h4>Pro Monthly</h4>
+                        <span class="price">₹199</span>
+                    </div>
+                    <ul class="features">
+                        <li>✅ Unlock AI Coach</li>
+                        <li>✅ Unlimited History</li>
+                        <li>✅ Gold Profile Theme</li>
+                    </ul>
+                </div>
+                <div class="plan-card highlight" onclick="selectPlan('Elite', 1499)">
+                    <div class="plan-header">
+                        <h4>Elite Yearly</h4>
+                        <span class="price">₹1499</span>
+                    </div>
+                    <ul class="features">
+                        <li>✅ All Pro Features</li>
+                        <li>✅ Diet Plans</li>
+                        <li>✅ Priority Support</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="payment-gateway" class="hidden">
+                <button class="back-btn" onclick="backToPlans()"><i class="fas fa-arrow-left"></i> Back</button>
+                <h2 id="pay-amount" style="text-align:center; margin:15px 0; color:var(--primary);"></h2>
+                
+                <div class="payment-methods">
+                    <button class="pay-tab active" onclick="switchPayMethod('upi')">UPI</button>
+                    <button class="pay-tab" onclick="switchPayMethod('card')">Card</button>
+                </div>
+
+                <div id="pay-upi" class="pay-view active">
+                    <label>UPI ID</label>
+                    <input type="text" id="upi-input" placeholder="e.g. user@oksbi">
+                </div>
+                
+                <div id="pay-card" class="pay-view">
+                    <label>Card Number</label>
+                    <input type="text" id="card-num" placeholder="XXXX XXXX XXXX XXXX" maxlength="19">
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <input type="text" id="card-expiry" placeholder="MM/YY" maxlength="5">
+                        <input type="text" id="card-cvv" placeholder="CVV" maxlength="3">
+                    </div>
+                </div>
+
+                <button class="btn-primary mt-15" onclick="processPayment()">Complete Payment</button>
+            </div>
+        </div>
+    </div>
+
     <div id="chat-widget-container">
         <div id="chat-window" class="hidden">
             <div class="chat-header">
@@ -68,7 +130,7 @@
                 <div class="msg bot">Hello! Ask me about workouts, diet, supplements, or specific muscles! 💪</div>
             </div>
             <div class="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Type 'chest', 'diet', 'creatine'..." onkeypress="handleChatEnter(event)">
+                <input type="text" id="chat-input" placeholder="Type 'chest', 'diet'..." onkeypress="handleChatEnter(event)">
                 <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
@@ -95,34 +157,32 @@
                 <h1>Workout</h1>
                 <button class="icon-btn" onclick="resetRoutine()"><i class="fas fa-undo"></i></button>
             </div>
-            
             <div class="selector-wrapper">
                 <select id="day-selector" onchange="changeDay(this.value)">
                     <option value="Monday">Mon: Chest & Triceps</option>
                     <option value="Tuesday">Tue: Back & Biceps</option>
                     <option value="Wednesday">Wed: Legs & Shoulders</option>
-                    <option value="Thursday">Thu: Upper Body</option>
-                    <option value="Friday">Fri: Lower Body</option>
-                    <option value="Saturday">Sat: Cardio / Abs</option>
+                    <option value="Thursday">Thu: Chest & Triceps</option>
+                    <option value="Friday">Fri: Back & Biceps</option>
+                    <option value="Saturday">Sat: Legs & Shoulders</option>
                     <option value="Sunday">Sun: Rest</option>
                 </select>
             </div>
-
             <div id="workout-list" class="scroll-area"></div>
             
-            <button class="btn-primary" style="margin-top: 20px;" onclick="finishWorkoutSession()">
+            <button class="btn-dark mt-15" style="border: 1px dashed #333;" onclick="addCustomExercise()">+ Add Exercise / Deadlift</button>
+            
+            <button class="btn-primary mt-15" onclick="finishWorkoutSession()">
                 Finish Workout (+100 XP)
             </button>
         </div>
 
         <div id="view-analytics" class="container">
             <div class="header"><h1>Analytics</h1></div>
-            
             <div class="tab-switcher">
                 <button class="tab-btn active" onclick="switchSubTab('sub-stats', this)">Stats</button>
                 <button class="tab-btn" onclick="switchSubTab('sub-history', this); loadHistoryUI()">History</button>
             </div>
-
             <div id="sub-stats" class="sub-view active">
                 <div class="stats-row">
                     <div class="stat-card"><span class="lbl">Workouts</span><span class="val highlight" id="stat-workouts">0</span></div>
@@ -132,7 +192,7 @@
                     <h3>Consistency</h3>
                     <div class="chart-container"><canvas id="consistencyChart"></canvas></div>
                 </div>
-                <div class="card" style="border-left: 3px solid #ffd700;">
+                <div class="card" style="border-left: 3px solid #ffd700; margin-top:15px;">
                     <h3><i class="fas fa-dumbbell"></i> 1 Rep Max</h3>
                     <div class="form-grid">
                         <div class="inp"><label>Weight (kg)</label><input type="number" id="rm-weight" placeholder="100"></div>
@@ -142,11 +202,8 @@
                     <div id="rm-result" class="result-box hidden"></div>
                 </div>
             </div>
-
             <div id="sub-history" class="sub-view">
-                <div id="history-list">
-                    <p style="text-align:center; color:#666; margin-top:20px;">No workouts recorded yet.</p>
-                </div>
+                <div id="history-list"><p style="text-align:center; color:#666;">No workouts yet.</p></div>
             </div>
         </div>
 
@@ -167,22 +224,19 @@
                             <select id="diet-goal">
                                 <option value="cut">Fat Loss</option>
                                 <option value="bulk">Muscle Gain</option>
-                                <option value="strength">Strength</option>
                                 <option value="maintain">Maintenance</option>
                             </select>
                         </div>
                     </div>
                     <div class="diet-selector">
-                        <label>Preference:</label>
-                        <div class="choice-container">
-                            <button class="choice-btn active" id="btn-nonveg" onclick="selectDietPref('nonveg')"><i class="fas fa-drumstick-bite"></i> Non-Veg</button>
-                            <button class="choice-btn" id="btn-veg" onclick="selectDietPref('veg')"><i class="fas fa-leaf"></i> Veg</button>
-                        </div>
+                        <button class="choice-btn active" id="btn-nonveg" onclick="selectDietPref('nonveg')">Non-Veg</button>
+                        <button class="choice-btn" id="btn-veg" onclick="selectDietPref('veg')">Veg</button>
                     </div>
                     <button class="btn-primary mt-15" onclick="generateDiet()">Create Plan</button>
                 </div>
+                
                 <div id="diet-results" class="hidden">
-                    <div class="stats-row">
+                    <div class="stats-row" style="margin-bottom: 15px;">
                         <div class="stat-card"><span class="lbl">Calories</span><span class="val highlight" id="out-cals">0</span></div>
                         <div class="stat-card"><span class="lbl">Protein</span><span class="val" id="out-prot">0g</span></div>
                         <div class="stat-card"><span class="lbl">Carbs</span><span class="val" id="out-carbs">0g</span></div>
@@ -199,7 +253,7 @@
                 <div id="scan-loading" class="hidden" style="text-align:center; padding:20px;"><i class="fas fa-circle-notch fa-spin highlight"></i> Analyzing...</div>
                 <div id="scan-result" class="card hidden" style="border-left: 3px solid var(--primary);">
                     <img id="scan-preview" class="scan-img">
-                    <div class="ai-feedback"><h4>🔍 AI Analysis</h4><p id="ai-obs" style="color:#ccc; font-size:0.9rem; line-height:1.5;">...</p></div>
+                    <div class="ai-feedback"><h4>🔍 AI Analysis</h4><p id="ai-obs" style="color:#ccc; font-size:0.9rem;">...</p></div>
                 </div>
             </div>
 
@@ -214,26 +268,51 @@
 
         <div id="view-profile" class="container">
             <div class="header"><h1>Profile</h1></div>
-            <div class="card profile-card">
+            <div class="card profile-card" id="profile-card-ui">
                 <div class="avatar"><i class="fas fa-user"></i></div>
-                <div><h2 id="profile-email">User</h2><span class="badge" id="plan-badge">Free Plan</span></div>
+                <div>
+                    <h2 id="profile-email">User</h2>
+                    <span class="badge" id="plan-badge">Free Plan</span>
+                </div>
             </div>
             
             <div class="card">
-                <div class="header-row" style="margin-bottom: 10px;"><h3>Weekly Goal</h3><span style="color:var(--primary); font-weight:bold;">1000 XP</span></div>
+                <div class="header-row" style="margin-bottom: 10px;">
+                    <h3>Level <span id="user-level" style="color:var(--primary)">1</span></h3>
+                    <span style="font-size:0.8rem; color:var(--muted);">Goal: 1000 XP/Lvl</span>
+                </div>
                 <div class="xp-bar-container">
-                    <div class="xp-text"><span id="weekly-xp-current">0 XP</span> <span>Target</span></div>
+                    <div class="xp-text"><span id="weekly-xp-current">0 XP</span> <span>Next Level</span></div>
                     <div class="xp-track"><div id="weekly-xp-fill" class="xp-fill"></div></div>
                 </div>
             </div>
 
-            <button class="btn-danger" onclick="logout()">Log Out</button>
+            <div class="card">
+                <h3>App Settings</h3>
+                <div class="form-grid" style="grid-template-columns: 1fr; margin-top:10px;">
+                    <div class="inp">
+                        <label>Rest / Cooling Time (seconds)</label>
+                        <input type="number" id="setting-rest" placeholder="90">
+                    </div>
+                </div>
+                <button class="btn-dark mt-15" onclick="saveSettings()">Save Settings</button>
+            </div>
+
+            <button class="btn-dark mt-15" style="border: 1px solid #333;" onclick="resetXP()">Reset XP</button>
+            <button class="btn-primary mt-15" onclick="openPlans()">Upgrade Plan</button>
+            <button class="btn-danger mt-15" onclick="logout()">Log Out</button>
         </div>
 
         <div class="nav-bar">
             <button class="nav-btn active" onclick="switchView('view-workout', this)"><i class="fas fa-dumbbell"></i><span>Lift</span></button>
             <button class="nav-btn" onclick="switchView('view-analytics', this)"><i class="fas fa-chart-line"></i><span>Stats</span></button>
-            <button class="nav-btn" onclick="switchView('view-coach', this)"><i class="fas fa-robot"></i><span>Coach</span></button>
+            <button class="nav-btn" onclick="switchView('view-coach', this)">
+                <div style="position:relative;">
+                    <i class="fas fa-robot"></i>
+                    <i class="fas fa-lock" id="lock-icon" style="position:absolute; top:-5px; right:-8px; font-size:0.6rem; color:var(--primary);"></i>
+                </div>
+                <span>Coach</span>
+            </button>
             <button class="nav-btn" onclick="switchView('view-profile', this)"><i class="fas fa-user"></i><span>Me</span></button>
         </div>
 
