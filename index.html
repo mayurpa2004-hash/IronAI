@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IronAI - Payments</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="styles.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p>Connecting to Server...</p>
+    </div>
+
+    <div id="auth-screen" style="display:none;">
+        <div class="logo">IRON<span class="highlight">AI</span></div>
+        <p class="subtitle">Train. Eat. Conquer.</p>
+        
+        <div class="auth-box">
+            <div class="input-group">
+                <i class="fas fa-envelope"></i>
+                <input id="email" type="email" placeholder="Email">
+            </div>
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input id="password" type="password" placeholder="Password">
+            </div>
+            <button class="btn-primary" onclick="handleAuth()">Login / Register</button>
+            <p id="auth-error" class="error-text"></p>
+        </div>
+    </div>
+
+    <div id="rest-timer">
+        <div class="timer-circle"><span id="timer-val">00:00</span></div>
+        <div class="timer-controls">
+            <button onclick="adjustTime(-10)">-10</button>
+            <button class="stop-btn" onclick="stopTimer()"><i class="fas fa-times"></i></button>
+            <button onclick="adjustTime(+10)">+10</button>
+        </div>
+    </div>
+
+    <div id="toast">Saved</div>
+
+    <div id="app-content" style="display: none;">
+        
+        <div id="view-workout" class="container active">
+            <div class="header">
+                <h1>Workout</h1>
+                <button class="icon-btn" onclick="resetRoutine()"><i class="fas fa-undo"></i></button>
+            </div>
+            <div class="selector-wrapper">
+                <select id="day-selector" onchange="loadWorkout(this.value)">
+                    <option value="Monday">Mon: Chest & Triceps</option>
+                    <option value="Tuesday">Tue: Back & Biceps</option>
+                    <option value="Wednesday">Wed: Legs & Shoulders</option>
+                    <option value="Thursday">Thu: Upper Body</option>
+                    <option value="Friday">Fri: Lower Body</option>
+                    <option value="Saturday">Sat: Cardio / Abs</option>
+                    <option value="Sunday">Sun: Rest</option>
+                </select>
+            </div>
+            <div id="workout-list" class="scroll-area"></div>
+            <button class="btn-primary" onclick="finishWorkoutSession()">Finish Workout (+100 XP)</button>
+        </div>
+
+        <div id="view-analytics" class="container">
+            <div class="header"><h1>Analytics</h1></div>
+            <div class="stats-row">
+                <div class="stat-card"><span class="lbl">Workouts</span><span class="val highlight" id="stat-workouts">0</span></div>
+                <div class="stat-card"><span class="lbl">Streak</span><span class="val" id="stat-streak">0 🔥</span></div>
+            </div>
+            <div class="card">
+                <h3>Consistency</h3>
+                <div class="chart-container"><canvas id="consistencyChart"></canvas></div>
+            </div>
+            <div class="card" style="border-left: 3px solid #ffd700;">
+                <h3><i class="fas fa-dumbbell"></i> 1 Rep Max</h3>
+                <div class="form-grid">
+                    <div class="inp"><label>Weight (kg)</label><input type="number" id="rm-weight" placeholder="100"></div>
+                    <div class="inp"><label>Reps</label><input type="number" id="rm-reps" placeholder="5"></div>
+                </div>
+                <button class="btn-dark mt-15" onclick="calculate1RM()">Calculate</button>
+                <div id="rm-result" class="result-box hidden"></div>
+            </div>
+        </div>
+
+        <div id="view-coach" class="container">
+            <div class="header"><h1>AI Coach</h1></div>
+            <div class="tab-switcher">
+                <button class="tab-btn active" onclick="switchSubTab('sub-diet', this)">Diet</button>
+                <button class="tab-btn" onclick="switchSubTab('sub-scan', this)">Photo AI</button>
+                <button class="tab-btn" onclick="switchSubTab('sub-timeline', this)">Timeline</button>
+            </div>
+
+            <div id="sub-diet" class="sub-view active">
+                <div class="card">
+                    <h3>Generate Meal Plan</h3>
+                    <div class="form-grid">
+                        <div class="inp"><label>Weight (kg)</label><input type="number" id="diet-weight" placeholder="75"></div>
+                        <div class="inp"><label>Goal</label>
+                            <select id="diet-goal">
+                                <option value="cut">Fat Loss</option>
+                                <option value="bulk">Muscle Gain</option>
+                                <option value="strength">Strength</option>
+                                <option value="endurance">Endurance</option>
+                                <option value="maintain">Maintenance</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="diet-selector">
+                        <label>Preference:</label>
+                        <div class="choice-container">
+                            <button class="choice-btn active" id="btn-nonveg" onclick="selectDietPref('nonveg')"><i class="fas fa-drumstick-bite"></i> Non-Veg</button>
+                            <button class="choice-btn" id="btn-veg" onclick="selectDietPref('veg')"><i class="fas fa-leaf"></i> Veg</button>
+                        </div>
+                    </div>
+                    <button class="btn-primary mt-15" onclick="generateDiet()">Create Plan</button>
+                </div>
+                <div id="diet-results" class="hidden">
+                    <div class="stats-row">
+                        <div class="stat-card"><span class="lbl">Calories</span><span class="val highlight" id="out-cals">0</span></div>
+                        <div class="stat-card"><span class="lbl">Protein</span><span class="val" id="out-prot">0g</span></div>
+                        <div class="stat-card"><span class="lbl">Carbs</span><span class="val" id="out-carbs">0g</span></div>
+                    </div>
+                    <div id="meal-list"></div>
+                </div>
+            </div>
+
+            <div id="sub-scan" class="sub-view">
+                <div class="card upload-card" onclick="document.getElementById('ai-photo').click()">
+                    <i class="fas fa-camera"></i><p>Upload Physique Photo</p>
+                    <input type="file" id="ai-photo" accept="image/*" hidden onchange="analyzePhoto(this)">
+                </div>
+                <div id="scan-loading" class="hidden" style="text-align:center; padding:20px;"><i class="fas fa-circle-notch fa-spin highlight"></i> Analyzing...</div>
+                <div id="scan-result" class="card hidden" style="border-left: 3px solid var(--primary);">
+                    <img id="scan-preview" class="scan-img">
+                    <div class="ai-feedback"><h4>🔍 AI Analysis</h4><p id="ai-obs" style="color:#ccc; font-size:0.9rem; line-height:1.5;">...</p></div>
+                </div>
+            </div>
+
+            <div id="sub-timeline" class="sub-view">
+                <div class="card upload-card" onclick="document.getElementById('timeline-photo').click()">
+                    <i class="fas fa-plus-circle"></i><p>Add Progress Photo</p>
+                    <input type="file" id="timeline-photo" accept="image/*" hidden onchange="uploadTimelinePhoto(this)">
+                </div>
+                <div id="timeline-grid" class="gallery-grid"></div>
+            </div>
+        </div>
+
+        <div id="view-profile" class="container">
+            <div class="header"><h1>Profile</h1></div>
+            <div class="card profile-card">
+                <div class="avatar"><i class="fas fa-user"></i></div>
+                <div><h2 id="profile-email">User</h2><span class="badge" id="plan-badge">Free Plan</span></div>
+            </div>
+            
+            <div class="card">
+                <div class="header-row" style="margin-bottom: 10px;"><h3>Weekly Goal</h3><span style="color:var(--primary); font-weight:bold;">1000 XP</span></div>
+                <div class="xp-bar-container">
+                    <div class="xp-text"><span id="weekly-xp-current">0 XP</span> <span>Target</span></div>
+                    <div class="xp-track"><div id="weekly-xp-fill" class="xp-fill"></div></div>
+                </div>
+            </div>
+
+            <div class="card" style="border-left: 3px solid #ffd700; cursor: pointer;" onclick="openPlans()">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div><h3 style="color:#ffd700"><i class="fas fa-crown"></i> Upgrade to Pro</h3><p style="font-size:0.8rem; color:#aaa;">Get Advanced AI & Analytics</p></div>
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+
+            <button class="btn-danger" onclick="logout()">Log Out</button>
+        </div>
+
+        <div id="payment-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header"><h2>Select Plan</h2><button onclick="closeModal('payment-modal')"><i class="fas fa-times"></i></button></div>
+                
+                <div id="plan-selection">
+                    <div class="plan-card" onclick="selectPlan('Pro', 199)">
+                        <div class="plan-tag">Monthly</div>
+                        <h3>Pro</h3><div class="price">₹199<small>/mo</small></div>
+                        <ul><li>AI Diet Plans</li><li>Advanced Stats</li></ul>
+                    </div>
+                    <div class="plan-card elite" onclick="selectPlan('Elite', 1999)">
+                        <div class="plan-tag best">Best Value</div>
+                        <h3>Elite</h3><div class="price">₹1999<small>/yr</small></div>
+                        <ul><li>All Pro Features</li><li>Priority Support</li></ul>
+                    </div>
+                </div>
+
+                <div id="payment-gateway" class="hidden">
+                    <button class="back-btn" onclick="backToPlans()"><i class="fas fa-arrow-left"></i> Back</button>
+                    <h3 id="pay-amount" style="margin:15px 0; text-align:center;">Pay ₹199</h3>
+                    
+                    <div class="pay-tabs">
+                        <button class="pay-tab active" onclick="switchPayMethod('upi')">UPI</button>
+                        <button class="pay-tab" onclick="switchPayMethod('card')">Card</button>
+                        <button class="pay-tab" onclick="switchPayMethod('paypal')">PayPal</button>
+                    </div>
+
+                    <div id="pay-upi" class="pay-view active">
+                        <div class="qr-box"><i class="fas fa-qrcode" style="font-size:3rem;"></i><p>Scan to Pay</p></div>
+                        <input type="text" placeholder="Enter UPI ID (e.g. user@okhdfc)">
+                    </div>
+                    
+                    <div id="pay-card" class="pay-view">
+                        <input type="text" placeholder="Card Number" style="margin-bottom:10px;">
+                        <div style="display:flex; gap:10px;"><input type="text" placeholder="MM/YY"><input type="text" placeholder="CVV"></div>
+                    </div>
+
+                    <div id="pay-paypal" class="pay-view" style="text-align:center;">
+                        <button class="btn-dark" style="background:#0070ba;">Pay with PayPal</button>
+                    </div>
+
+                    <button class="btn-primary mt-15" onclick="processPayment()">Complete Payment</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <button class="nav-btn active" onclick="switchView('view-workout', this)"><i class="fas fa-dumbbell"></i><span>Lift</span></button>
+            <button class="nav-btn" onclick="switchView('view-analytics', this)"><i class="fas fa-chart-line"></i><span>Stats</span></button>
+            <button class="nav-btn" onclick="switchView('view-coach', this)"><i class="fas fa-robot"></i><span>Coach</span></button>
+            <button class="nav-btn" onclick="switchView('view-profile', this)"><i class="fas fa-user"></i><span>Me</span></button>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
