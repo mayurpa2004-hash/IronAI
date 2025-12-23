@@ -1,0 +1,15 @@
+{
+    "name": "IronAI Tracker",
+    "short_name": "IronAI",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#09090b",
+    "theme_color": "#00f2ea",
+    "icons": [
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/254/254638.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
