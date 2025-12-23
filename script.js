@@ -119,9 +119,21 @@ function handleAuth() {
 
     if(!email || !pass) { errBox.innerText = "Please enter email & password"; return; }
     
+    // NEW: Check password length before sending to Firebase
+    if (pass.length < 6) {
+        errBox.innerText = "Password must be at least 6 characters";
+        return;
+    }
+
     auth.signInWithEmailAndPassword(email.toLowerCase(), pass).catch(e => {
-        if(e.code === 'auth/user-not-found') {
-            auth.createUserWithEmailAndPassword(email.toLowerCase(), pass).catch(er => errBox.innerText = er.message);
+        if(e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+            auth.createUserWithEmailAndPassword(email.toLowerCase(), pass).catch(er => {
+                if (er.code === 'auth/email-already-in-use') {
+                    errBox.innerText = "Invalid Password.";
+                } else {
+                    errBox.innerText = er.message;
+                }
+            });
         } else if (e.code === 'auth/wrong-password') {
             errBox.innerText = "Invalid Password.";
         } else {
