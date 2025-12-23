@@ -14,22 +14,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <link rel="stylesheet" href="styles.css">
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker Registered'))
-                    .catch(err => console.log('SW Error:', err));
-            });
-        }
-    </script>
 </head>
 <body>
 
@@ -39,10 +28,10 @@
 
     <div id="loading-screen">
         <div class="spinner"></div>
-        <p>Syncing Data...</p>
+        <p>Loading IronAI...</p>
     </div>
 
-    <div id="auth-screen" style="display:none;">
+    <div id="auth-screen">
         <div class="logo">IRON<span class="highlight">AI</span></div>
         <p class="subtitle">Train. Eat. Conquer.</p>
         
@@ -56,7 +45,32 @@
                 <input id="password" type="password" placeholder="Password (Min 6 chars)">
             </div>
             <button class="btn-primary" onclick="handleAuth()">Login / Register</button>
-            <p id="auth-error" class="error-text"></p>
+            <p id="auth-error" class="error-text" style="color:var(--danger); margin-top:10px; text-align:center; font-size:0.9rem;"></p>
+        </div>
+    </div>
+
+    <div id="split-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select Workout Split</h3>
+                <button onclick="closeModal('split-modal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="plan-card" onclick="setSplit('bro_split')">
+                <div class="plan-header"><h4>Bro Split (Default)</h4></div>
+                <p style="font-size:0.8rem; color:#aaa;">Focus on one major muscle group per day.</p>
+            </div>
+            <div class="plan-card" onclick="setSplit('ppl')">
+                <div class="plan-header"><h4>Push / Pull / Legs</h4></div>
+                <p style="font-size:0.8rem; color:#aaa;">6 Day high frequency split.</p>
+            </div>
+            <div class="plan-card" onclick="setSplit('upper_lower')">
+                <div class="plan-header"><h4>Upper / Lower</h4></div>
+                <p style="font-size:0.8rem; color:#aaa;">4 Day split for balance.</p>
+            </div>
+            <div class="plan-card" onclick="setSplit('full_body')">
+                <div class="plan-header"><h4>Full Body</h4></div>
+                <p style="font-size:0.8rem; color:#aaa;">3 Day split for beginners.</p>
+            </div>
         </div>
     </div>
 
@@ -154,8 +168,13 @@
         
         <div id="view-workout" class="container active">
             <div class="header">
-                <h1>Workout</h1>
-                <button class="icon-btn" onclick="resetRoutine()"><i class="fas fa-undo"></i></button>
+                <h1>Lift</h1>
+                <div class="header-actions">
+                     <button class="icon-btn" onclick="openSplitModal()" style="margin-right:5px;"><i class="fas fa-list-ul"></i></button>
+                     <input type="date" id="calendar-picker" style="display:none;" onchange="handleCalendarPick(this)">
+                    <button class="icon-btn" onclick="document.getElementById('calendar-picker').showPicker()"><i class="fas fa-calendar-alt"></i></button>
+                    <button class="icon-btn" onclick="resetRoutine()"><i class="fas fa-undo"></i></button>
+                </div>
             </div>
             <div class="selector-wrapper">
                 <select id="day-selector" onchange="changeDay(this.value)">
@@ -168,9 +187,10 @@
                     <option value="Sunday">Sun: Rest</option>
                 </select>
             </div>
+            
             <div id="workout-list" class="scroll-area"></div>
             
-            <button class="btn-dark mt-15" style="border: 1px dashed #333;" onclick="addCustomExercise()">+ Add Exercise / Deadlift</button>
+            <button class="btn-dark mt-15" style="border: 1px dashed #333;" onclick="addCustomExercise()">+ Add Exercise</button>
             
             <button class="btn-primary mt-15" onclick="finishWorkoutSession()">
                 Finish Workout (+100 XP)
@@ -187,6 +207,7 @@
                 <div class="stats-row">
                     <div class="stat-card"><span class="lbl">Workouts</span><span class="val highlight" id="stat-workouts">0</span></div>
                     <div class="stat-card"><span class="lbl">Streak</span><span class="val" id="stat-streak">0 🔥</span></div>
+                    <div class="stat-card"><span class="lbl">Cals Burned</span><span class="val" id="stat-cals" style="color:#ff9f43">0</span></div>
                 </div>
                 <div class="card">
                     <h3>Consistency</h3>
@@ -203,6 +224,9 @@
                 </div>
             </div>
             <div id="sub-history" class="sub-view">
+                <div id="history-filter-msg" class="hidden" style="text-align:center; margin-bottom:10px; color:var(--primary); font-size:0.9rem;">
+                    Showing results for: <span id="history-date-display"></span> <button onclick="clearHistoryFilter()" style="background:none;border:none;color:#fff;cursor:pointer;">(Clear)</button>
+                </div>
                 <div id="history-list"><p style="text-align:center; color:#666;">No workouts yet.</p></div>
             </div>
         </div>
@@ -220,10 +244,12 @@
                     <h3>Generate Meal Plan</h3>
                     <div class="form-grid">
                         <div class="inp"><label>Weight (kg)</label><input type="number" id="diet-weight" placeholder="75"></div>
-                        <div class="inp"><label>Goal</label>
+                        <div class="inp"><label>Height (cm)</label><input type="number" id="diet-height" placeholder="175"></div>
+                        <div class="inp" style="grid-column: span 2;"><label>Goal</label>
                             <select id="diet-goal">
                                 <option value="cut">Fat Loss</option>
-                                <option value="bulk">Muscle Gain</option>
+                                <option value="bulk">Bulk</option>
+                                <option value="recomp">Recomposition</option>
                                 <option value="maintain">Maintenance</option>
                             </select>
                         </div>
@@ -240,6 +266,7 @@
                         <div class="stat-card"><span class="lbl">Calories</span><span class="val highlight" id="out-cals">0</span></div>
                         <div class="stat-card"><span class="lbl">Protein</span><span class="val" id="out-prot">0g</span></div>
                         <div class="stat-card"><span class="lbl">Carbs</span><span class="val" id="out-carbs">0g</span></div>
+                        <div class="stat-card"><span class="lbl">BMI</span><span class="val" id="out-bmi">-</span></div>
                     </div>
                     <div id="meal-list"></div>
                 </div>
