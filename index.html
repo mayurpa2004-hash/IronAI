@@ -15,142 +15,16 @@
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
-
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
 
     <canvas id="confetti-canvas"></canvas>
 
-    <div id="network-status">You are Offline - Saving Locally 💾</div>
+    <div id="network-status">Local Mode • Images save to Cloud 沈</div>
 
     <div id="loading-screen">
         <div class="spinner"></div>
         <p>Loading IronAI...</p>
-    </div>
-
-    <div id="auth-screen">
-        <div class="logo">IRON<span class="highlight">AI</span></div>
-        <p class="subtitle">Train. Eat. Conquer.</p>
-        
-        <div class="auth-box">
-            <div class="input-group">
-                <i class="fas fa-envelope"></i>
-                <input id="email" type="email" placeholder="Email">
-            </div>
-            <div class="input-group">
-                <i class="fas fa-lock"></i>
-                <input id="password" type="password" placeholder="Password (Min 6 chars)">
-            </div>
-            <button class="btn-primary" onclick="handleAuth()">Login / Register</button>
-            <p id="auth-error" class="error-text" style="color:var(--danger); margin-top:10px; text-align:center; font-size:0.9rem;"></p>
-        </div>
-    </div>
-
-    <div id="split-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Select Workout Split</h3>
-                <button onclick="closeModal('split-modal')"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="plan-card" onclick="setSplit('bro_split')">
-                <div class="plan-header"><h4>Bro Split (Default)</h4></div>
-                <p style="font-size:0.8rem; color:#aaa;">Focus on one major muscle group per day.</p>
-            </div>
-            <div class="plan-card" onclick="setSplit('ppl')">
-                <div class="plan-header"><h4>Push / Pull / Legs</h4></div>
-                <p style="font-size:0.8rem; color:#aaa;">6 Day high frequency split.</p>
-            </div>
-            <div class="plan-card" onclick="setSplit('upper_lower')">
-                <div class="plan-header"><h4>Upper / Lower</h4></div>
-                <p style="font-size:0.8rem; color:#aaa;">4 Day split for balance.</p>
-            </div>
-            <div class="plan-card" onclick="setSplit('full_body')">
-                <div class="plan-header"><h4>Full Body</h4></div>
-                <p style="font-size:0.8rem; color:#aaa;">3 Day split for beginners.</p>
-            </div>
-        </div>
-    </div>
-
-    <div id="payment-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Upgrade Plan</h3>
-                <button onclick="closeModal('payment-modal')"><i class="fas fa-times"></i></button>
-            </div>
-            
-            <div id="plan-selection">
-                <div class="plan-card" onclick="selectPlan('Pro', 199)">
-                    <div class="plan-header">
-                        <h4>Pro Monthly</h4>
-                        <span class="price">₹199</span>
-                    </div>
-                    <ul class="features">
-                        <li>✅ Unlock AI Coach</li>
-                        <li>✅ Unlimited History</li>
-                        <li>✅ Gold Profile Theme</li>
-                    </ul>
-                </div>
-                <div class="plan-card highlight" onclick="selectPlan('Elite', 1499)">
-                    <div class="plan-header">
-                        <h4>Elite Yearly</h4>
-                        <span class="price">₹1499</span>
-                    </div>
-                    <ul class="features">
-                        <li>✅ All Pro Features</li>
-                        <li>✅ Diet Plans</li>
-                        <li>✅ Priority Support</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div id="payment-gateway" class="hidden">
-                <button class="back-btn" onclick="backToPlans()"><i class="fas fa-arrow-left"></i> Back</button>
-                <h2 id="pay-amount" style="text-align:center; margin:15px 0; color:var(--primary);"></h2>
-                
-                <div class="payment-methods">
-                    <button class="pay-tab active" onclick="switchPayMethod('upi')">UPI</button>
-                    <button class="pay-tab" onclick="switchPayMethod('card')">Card</button>
-                </div>
-
-                <div id="pay-upi" class="pay-view active">
-                    <label>UPI ID</label>
-                    <input type="text" id="upi-input" placeholder="e.g. user@oksbi">
-                </div>
-                
-                <div id="pay-card" class="pay-view">
-                    <label>Card Number</label>
-                    <input type="text" id="card-num" placeholder="XXXX XXXX XXXX XXXX" maxlength="19">
-                    <div style="display:flex; gap:10px; margin-top:10px;">
-                        <input type="text" id="card-expiry" placeholder="MM/YY" maxlength="5">
-                        <input type="text" id="card-cvv" placeholder="CVV" maxlength="3">
-                    </div>
-                </div>
-
-                <button class="btn-primary mt-15" onclick="processPayment()">Complete Payment</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="chat-widget-container">
-        <div id="chat-window" class="hidden">
-            <div class="chat-header">
-                <span>🤖 IronAI Coach</span>
-                <button onclick="toggleChat()" class="close-chat"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="chat-messages">
-                <div class="msg bot">Hello! Ask me about workouts, diet, supplements, or specific muscles! 💪</div>
-            </div>
-            <div class="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Type 'chest', 'diet'..." onkeypress="handleChatEnter(event)">
-                <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
-            </div>
-        </div>
-        <button id="chat-toggle" onclick="toggleChat()">
-            <i class="fas fa-comment-dots"></i>
-        </button>
     </div>
 
     <div id="rest-timer">
@@ -168,33 +42,36 @@
         
         <div id="view-workout" class="container active">
             <div class="header">
-                <h1>Lift</h1>
+                <div>
+                    <h1>IronAI</h1>
+                    <span id="current-split-badge" class="split-badge">Loading...</span>
+                </div>
                 <div class="header-actions">
-                     <button class="icon-btn" onclick="openSplitModal()" style="margin-right:5px;"><i class="fas fa-list-ul"></i></button>
-                     <input type="date" id="calendar-picker" style="display:none;" onchange="handleCalendarPick(this)">
+                    <div class="custom-select-wrapper">
+                        <select id="split-selector" onchange="changeSplit(this.value)">
+                            <option value="default_split">Default (Chest/Back/Legs)</option>
+                            <option value="bro_split">Bro Split</option>
+                            <option value="ppl">Push / Pull / Legs</option>
+                            <option value="upper_lower">Upper / Lower</option>
+                            <option value="full_body">Full Body</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                    </div>
+                    
+                    <input type="date" id="calendar-picker" style="display:none;" onchange="handleCalendarPick(this)">
                     <button class="icon-btn" onclick="document.getElementById('calendar-picker').showPicker()"><i class="fas fa-calendar-alt"></i></button>
                     <button class="icon-btn" onclick="resetRoutine()"><i class="fas fa-undo"></i></button>
                 </div>
             </div>
+
             <div class="selector-wrapper">
                 <select id="day-selector" onchange="changeDay(this.value)">
-                    <option value="Monday">Mon: Chest & Triceps</option>
-                    <option value="Tuesday">Tue: Back & Biceps</option>
-                    <option value="Wednesday">Wed: Legs & Shoulders</option>
-                    <option value="Thursday">Thu: Chest & Triceps</option>
-                    <option value="Friday">Fri: Back & Biceps</option>
-                    <option value="Saturday">Sat: Legs & Shoulders</option>
-                    <option value="Sunday">Sun: Rest</option>
-                </select>
+                    </select>
             </div>
-            
+
             <div id="workout-list" class="scroll-area"></div>
-            
             <button class="btn-dark mt-15" style="border: 1px dashed #333;" onclick="addCustomExercise()">+ Add Exercise</button>
-            
-            <button class="btn-primary mt-15" onclick="finishWorkoutSession()">
-                Finish Workout (+100 XP)
-            </button>
+            <button class="btn-primary mt-15" onclick="finishWorkoutSession()">Finish Workout (+100 XP)</button>
         </div>
 
         <div id="view-analytics" class="container">
@@ -206,7 +83,7 @@
             <div id="sub-stats" class="sub-view active">
                 <div class="stats-row">
                     <div class="stat-card"><span class="lbl">Workouts</span><span class="val highlight" id="stat-workouts">0</span></div>
-                    <div class="stat-card"><span class="lbl">Streak</span><span class="val" id="stat-streak">0 🔥</span></div>
+                    <div class="stat-card"><span class="lbl">Streak</span><span class="val" id="stat-streak">0 櫨</span></div>
                     <div class="stat-card"><span class="lbl">Cals Burned</span><span class="val" id="stat-cals" style="color:#ff9f43">0</span></div>
                 </div>
                 <div class="card">
@@ -232,10 +109,9 @@
         </div>
 
         <div id="view-coach" class="container">
-            <div class="header"><h1>AI Coach</h1></div>
+            <div class="header"><h1>Coach</h1></div>
             <div class="tab-switcher">
                 <button class="tab-btn active" onclick="switchSubTab('sub-diet', this)">Diet</button>
-                <button class="tab-btn" onclick="switchSubTab('sub-scan', this)">Photo AI</button>
                 <button class="tab-btn" onclick="switchSubTab('sub-timeline', this)">Timeline</button>
             </div>
 
@@ -272,24 +148,35 @@
                 </div>
             </div>
 
-            <div id="sub-scan" class="sub-view">
-                <div class="card upload-card" onclick="document.getElementById('ai-photo').click()">
-                    <i class="fas fa-camera"></i><p>Upload Physique Photo</p>
-                    <input type="file" id="ai-photo" accept="image/*" hidden onchange="analyzePhoto(this)">
-                </div>
-                <div id="scan-loading" class="hidden" style="text-align:center; padding:20px;"><i class="fas fa-circle-notch fa-spin highlight"></i> Analyzing...</div>
-                <div id="scan-result" class="card hidden" style="border-left: 3px solid var(--primary);">
-                    <img id="scan-preview" class="scan-img">
-                    <div class="ai-feedback"><h4>🔍 AI Analysis</h4><p id="ai-obs" style="color:#ccc; font-size:0.9rem;">...</p></div>
-                </div>
-            </div>
-
             <div id="sub-timeline" class="sub-view">
-                <div class="card upload-card" onclick="document.getElementById('timeline-photo').click()">
-                    <i class="fas fa-plus-circle"></i><p>Add Progress Photo</p>
-                    <input type="file" id="timeline-photo" accept="image/*" hidden onchange="uploadTimelinePhoto(this)">
+                <div class="card">
+                    <h3>Add Progress Photo</h3>
+                    <p style="font-size: 0.75rem; color: #666; margin-bottom: 10px;">Photos uploaded to Cloud. Data saved locally.</p>
+                    
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <label style="color:#aaa; font-size:0.8rem; margin-bottom:5px; display:block;">Date</label>
+                        <input type="date" id="timeline-date" style="color-scheme: dark;">
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <label style="color:#aaa; font-size:0.8rem; margin-bottom:5px; display:block;">Note (Optional)</label>
+                        <textarea id="timeline-note" placeholder="Weight? How do you feel?" 
+                                  style="width:100%; background:#000; color:#fff; border:1px solid #333; padding:10px; border-radius:8px; resize: vertical; min-height: 60px;"></textarea>
+                    </div>
+
+                    <div class="upload-card" onclick="document.getElementById('timeline-photo-input').click()">
+                        <i class="fas fa-camera" style="font-size: 1.5rem; margin-bottom: 10px;"></i>
+                        <br>
+                        <span id="file-name-display">Tap to Select Photo</span>
+                        <input type="file" id="timeline-photo-input" accept="image/*" hidden onchange="updateFileName(this)">
+                    </div>
+
+                    <button class="btn-primary mt-15" onclick="uploadTimelineEntry()">Upload & Save</button>
                 </div>
-                <div id="timeline-grid" class="gallery-grid"></div>
+                
+                <div id="timeline-grid" class="gallery-grid" style="margin-top: 20px;">
+                    <p style="text-align:center; color:#666; width:100%;">Loading...</p>
+                </div>
             </div>
         </div>
 
@@ -298,11 +185,10 @@
             <div class="card profile-card" id="profile-card-ui">
                 <div class="avatar"><i class="fas fa-user"></i></div>
                 <div>
-                    <h2 id="profile-email">User</h2>
-                    <span class="badge" id="plan-badge">Free Plan</span>
+                    <h2 id="profile-email">Local User</h2>
+                    <span class="badge" id="plan-badge">Pro Plan</span>
                 </div>
             </div>
-            
             <div class="card">
                 <div class="header-row" style="margin-bottom: 10px;">
                     <h3>Level <span id="user-level" style="color:var(--primary)">1</span></h3>
@@ -313,7 +199,6 @@
                     <div class="xp-track"><div id="weekly-xp-fill" class="xp-fill"></div></div>
                 </div>
             </div>
-
             <div class="card">
                 <h3>App Settings</h3>
                 <div class="form-grid" style="grid-template-columns: 1fr; margin-top:10px;">
@@ -324,27 +209,19 @@
                 </div>
                 <button class="btn-dark mt-15" onclick="saveSettings()">Save Settings</button>
             </div>
-
             <button class="btn-dark mt-15" style="border: 1px solid #333;" onclick="resetXP()">Reset XP</button>
-            <button class="btn-primary mt-15" onclick="openPlans()">Upgrade Plan</button>
-            <button class="btn-danger mt-15" onclick="logout()">Log Out</button>
         </div>
 
         <div class="nav-bar">
             <button class="nav-btn active" onclick="switchView('view-workout', this)"><i class="fas fa-dumbbell"></i><span>Lift</span></button>
             <button class="nav-btn" onclick="switchView('view-analytics', this)"><i class="fas fa-chart-line"></i><span>Stats</span></button>
             <button class="nav-btn" onclick="switchView('view-coach', this)">
-                <div style="position:relative;">
-                    <i class="fas fa-robot"></i>
-                    <i class="fas fa-lock" id="lock-icon" style="position:absolute; top:-5px; right:-8px; font-size:0.6rem; color:var(--primary);"></i>
-                </div>
+                <div style="position:relative;"><i class="fas fa-robot"></i></div>
                 <span>Coach</span>
             </button>
             <button class="nav-btn" onclick="switchView('view-profile', this)"><i class="fas fa-user"></i><span>Me</span></button>
         </div>
-
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
