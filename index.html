@@ -72,7 +72,7 @@
               <p class="muted">No accounts. No cloud. Just you, your iron, and your progress.</p>
               <div class="hero-actions">
                 <button class="primary" id="startWorkoutBtn">Start Workout</button>
-                <button class="secondary" data-view="lift">Plan Today</button>
+                <button class="secondary" data-view="lift" id="planTodayBtn">Plan Today</button>
               </div>
             </div>
             <div class="hero-panel">
@@ -101,6 +101,8 @@
               <ul class="insight-list" id="insightsList">
                 <li>Complete a workout to unlock insights.</li>
               </ul>
+              <button class="secondary" id="weeklyPatternBtn">Compute weekly pattern</button>
+              <div class="result" id="weeklyPatternResult">Compute last 7 days.</div>
             </div>
           </div>
         </section>
@@ -124,17 +126,29 @@
           </div>
 
           <div class="card">
-            <div class="lift-header">
-              <div>
-                <h3 id="dayTitle">Today</h3>
-                <p class="muted" id="daySummary">Ready to lift.</p>
-              </div>
-              <div class="lift-actions">
-                <button class="primary" id="finishWorkoutBtn">Finish Workout</button>
-                <button class="secondary" id="addExerciseBtn">Add Exercise</button>
+              <div class="lift-header">
+                <div>
+                  <h3 id="dayTitle">Today</h3>
+                  <span class="edit-mode-label" id="editModeLabel">Editing workout</span>
+                  <p class="muted split-label" id="daySplitLabel">--</p>
+                  <p class="muted" id="daySummary">Ready to lift.</p>
+                </div>
+                <div class="lift-actions">
+                  <button class="secondary" id="addExerciseBtn">Add Exercise</button>
               </div>
             </div>
             <div id="exerciseList" class="exercise-list"></div>
+            <div class="finish-bar">
+              <select class="field" id="workoutIntensity">
+                <option value="3.5" data-label="General">Strength training (General)</option>
+                <option value="6" data-label="Vigorous">Vigorous strength training</option>
+                <option value="8" data-label="Circuit">Circuit training</option>
+              </select>
+              <button class="primary" id="finishWorkoutBtn">Finish Workout</button>
+              <span class="finish-celebrate" id="finishCelebrate" aria-live="polite">
+                Congrats! Workout logged.
+              </span>
+            </div>
           </div>
         </section>
 
@@ -147,8 +161,20 @@
                 <button class="seg-tab" data-view="timeline">Timeline</button>
               </div>
               <div class="history-actions">
+                <div class="history-period">
+                  <div class="seg-tabs history-period-tabs" role="tablist">
+                    <button class="seg-tab" id="historyPeriodWeek" data-period="week">Week</button>
+                    <button class="seg-tab" id="historyPeriodMonth" data-period="month">Month</button>
+                    <button class="seg-tab" id="historyPeriodYear" data-period="year">Year</button>
+                  </div>
+                  <div class="history-period-nav">
+                    <button class="chip" id="historyPrevBtn" aria-label="Previous period">◀</button>
+                    <span id="historyPeriodLabel">This week</span>
+                    <button class="chip" id="historyNextBtn" aria-label="Next period">▶</button>
+                  </div>
+                </div>
                 <div class="history-calories">
-                  <span class="label">Today burn</span>
+                  <span class="label" id="historyCaloriesLabel">Today burn</span>
                   <strong id="historyCalories">--</strong>
                 </div>
               </div>
@@ -174,6 +200,16 @@
                 <input class="field" id="bmiWeight" type="number" inputmode="numeric" placeholder="Weight (kg)" />
                 <input class="field" id="bmiHeight" type="number" inputmode="numeric" placeholder="Height (cm)" />
                 <input class="field" id="bmiAge" type="number" inputmode="numeric" placeholder="Age" />
+                <select class="field" id="bmiSex">
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+                <select class="field" id="bmiActivity">
+                  <option value="1.2">Activity: Sedentary</option>
+                  <option value="1.375">Activity: Light</option>
+                  <option value="1.55" selected>Activity: Moderate</option>
+                  <option value="1.725">Activity: Active</option>
+                </select>
                 <select class="field" id="bmiGoal">
                   <option>Maintain</option>
                   <option>Cut</option>
@@ -189,7 +225,12 @@
               <h3>Plate Calculator</h3>
               <div class="form-grid">
                 <input class="field" id="plateTarget" type="number" inputmode="numeric" placeholder="Target weight (kg)" />
+                <select class="field" id="plateBar">
+                  <option value="20" selected>20kg bar</option>
+                  <option value="15">15kg bar</option>
+                </select>
                 <button class="primary" id="plateCalcBtn">Compute Plates</button>
+                <button class="secondary" id="plateCopyBtn">Copy setup</button>
               </div>
               <div class="result" id="plateResult">Standard 20kg bar.</div>
             </div>
@@ -198,9 +239,9 @@
               <div class="form-grid">
                 <input class="field" id="coachWeight" type="number" inputmode="numeric" placeholder="Body weight (kg)" />
                 <select class="field" id="coachGoal">
+                  <option>Maintain</option>
                   <option>Cut</option>
                   <option>Bulk</option>
-                  <option>Recomp</option>
                 </select>
                 <select class="field" id="coachDiet">
                   <option>Veg</option>
@@ -251,6 +292,25 @@
                 <button class="chip" data-rest="60">60s</button>
                 <button class="chip" data-rest="90">90s</button>
                 <button class="chip" data-rest="120">120s</button>
+              </div>
+            </div>
+          </div>
+          <div class="grid two">
+            <div class="card">
+              <h3>Weekly Goal</h3>
+              <div class="form-grid">
+                <input
+                  class="field"
+                  id="weeklyGoal"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  placeholder="Workouts per week"
+                />
+              </div>
+              <div class="weekly-progress">
+                <span id="weeklyProgress">This week: 0/4</span>
+                <span id="weeklyStreak">Streak: 0 days</span>
               </div>
             </div>
           </div>
@@ -322,6 +382,17 @@
       </div>
     </div>
 
+    <div class="modal" id="finishModal">
+      <div class="modal-content">
+        <h3>Workout Summary</h3>
+        <div class="finish-summary" id="finishSummary"></div>
+        <div class="modal-actions">
+          <button class="secondary" id="finishEditBtn">Continue Editing</button>
+          <button class="primary" id="finishSaveBtn">Save Workout</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal" id="historyDetailModal">
       <div class="modal-content" id="historyDetailContent"></div>
     </div>
@@ -332,4 +403,3 @@
     <script src="script.js"></script>
   </body>
 </html>
-
