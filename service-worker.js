@@ -1,6 +1,5 @@
-const CACHE_VERSION = "ironai-v11";
+const CACHE_VERSION = "ironai-v18";
 const ASSETS = [
-  ".",
   "index.html",
   "styles.css",
   "script.js",
@@ -8,28 +7,46 @@ const ASSETS = [
   "assets/chart.min.js",
   "assets/icon-any.svg",
   "assets/icon-maskable.svg",
-  "assets/ironai.woff2"
+  "assets/inter.ttf",
+
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(ASSETS))
+    (async () => {
+      const cache = await caches.open(CACHE_VERSION);
+      const results = await Promise.allSettled(ASSETS.map((asset) => cache.add(asset)));
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.warn("[sw] precache failed", ASSETS[index], result.reason);
+        }
+      });
+    })()
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key)))
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key)));
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(async () => {
+        const cached = await caches.match("index.html");
+        return cached || Response.error();
+      })
+    );
+    return;
+  }
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request)
@@ -49,5 +66,8 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data?.type === "GET_VERSION") {
     event.source?.postMessage({ type: "CACHE_VERSION", version: CACHE_VERSION });
+  }
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
   }
 });
